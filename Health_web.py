@@ -51,7 +51,7 @@ def extract_health_keywords(text):
     keywords = set()
     for line in text.splitlines():
         if any(kw in line for kw in ["建议", "提醒", "风险", "健康", "习惯", "注意"]):
-            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑吸烟戒烟肺健康高血压]+", line)
+            words = re.findall(r"[抽烟 喝酒 熬夜]+", line)
             keywords.update(words)
     return list(keywords)[:3] or ["健康建议"]
 
@@ -212,4 +212,5 @@ if st.session_state.chat_history:
     for q, a in reversed(st.session_state.chat_history[-5:]):
         st.markdown(f"**🧍 你：** {q}")
         st.markdown(f"**🤖 小宝：** {a}")
+
 
