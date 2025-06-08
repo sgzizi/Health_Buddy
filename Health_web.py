@@ -8,6 +8,11 @@ from dotenv import load_dotenv
 import pyttsx3
 import threading
 
+engine = pyttsx3.init()
+speak_thread = None
+stop_flag = False
+
+
 
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
 
@@ -36,11 +41,6 @@ def speak_text(text, rate):
         engine.say(line)
     engine.runAndWait()
 
-
-# --- Mac 朗读 ---
-engine = pyttsx3.init()
-speak_thread = None
-stop_flag = False
 
 # --- 提取健康关键词（更精准）---
 def extract_health_keywords(text):
