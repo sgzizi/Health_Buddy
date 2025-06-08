@@ -28,13 +28,19 @@ def clean_text(text):
     return text.strip()
 
 # --- 健康关键词提取 ---
+# 替换原来的 extract_health_keywords 函数
 def extract_health_keywords(text):
-    keywords = set()
+    health_keywords = [
+        "吸烟", "戒烟", "肺健康", "心脏", "高血压", "健康生活", "作息", "锻炼", "饮食", "焦虑", "熬夜", "肥胖",
+        "糖尿病", "慢性病", "运动建议", "高血压", "血脂", "心理健康"
+    ]
+    found = set()
     for line in text.splitlines():
-        if any(kw in line for kw in ["建议", "提醒", "风险", "健康", "习惯", "注意"]):
-            words = re.findall(r"[抽烟 喝酒 熬夜]+", line)
-            keywords.update(words)
-    return list(keywords)[:3] or ["健康建议"]
+        for word in health_keywords:
+            if word in line:
+                found.add(word)
+    return list(found)[:3] or ["健康生活"]
+
 
 # --- YouTube 推荐 ---
 def recommend_youtube_videos(query, max_results=3):
@@ -65,7 +71,7 @@ T = {
     "oxygen": "🩸 你的小血氧是多少呢？比如96～98%" if is_zh else "🩸 Oxygen level (e.g. 96–98%)",
     "steps": "🚶 今天大概走了多少步呢？" if is_zh else "🚶 Steps today?",
     "temp": "🌡 小宝来测体温啦，现在大概多少度呀？" if is_zh else "🌡 Temperature now?",
-    "btn": "🧠 生成健康建议" if is_zh else "🧠 Generate Advice",
+    "btn": "🧠 生成健康报告" if is_zh else "🧠 Generate Advice",
     "ask_subtitle": "🙋 有什么想问问小宝的吗？" if is_zh else "🙋 Anything to ask XiaoBao?",
     "question": "🐣 和小宝聊聊吧！" if is_zh else "🐣 Chat with XiaoBao!",
     "send": "发送 / Send",
