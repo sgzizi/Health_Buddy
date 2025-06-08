@@ -1,20 +1,30 @@
 # --- 页面配置 ---
 import streamlit as st
-import os
-import re
-import requests
-import subprocess
-from dotenv import load_dotenv
-import pyttsx3
+import os, re, requests
 import threading
-
-engine = pyttsx3.init()
-speak_thread = None
-stop_flag = False
-
-
+from dotenv import load_dotenv
 
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
+
+# --- 尝试加载 pyttsx3 ---
+try:
+    import pyttsx3
+    engine = pyttsx3.init()
+    speak_thread = None
+    stop_flag = False
+
+    def speak_text(text, rate):
+        global stop_flag
+        engine.setProperty("rate", rate)
+        for line in text.splitlines():
+            if stop_flag:
+                break
+            engine.say(line)
+        engine.runAndWait()
+
+    pyttsx3_available = True
+except:
+    pyttsx3_available = False
 
 # --- 加载密钥 ---
 load_dotenv()
@@ -22,7 +32,7 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-# --- 文本清理函数 ---
+# --- 文本清理 ---
 def clean_text(text):
     text = re.sub(r"[-=]{3,}", "", text)
     text = re.sub(r"~{2,}(.*?)~{2,}", "", text)
@@ -32,22 +42,12 @@ def clean_text(text):
     text = text.replace("✅ 小宝回答：", "")
     return text.strip()
 
-def speak_text(text, rate):
-    global stop_flag
-    engine.setProperty("rate", rate)
-    for line in text.splitlines():
-        if stop_flag:
-            break
-        engine.say(line)
-    engine.runAndWait()
-
-
-# --- 提取健康关键词（更精准）---
+# --- 健康关键词提取 ---
 def extract_health_keywords(text):
     keywords = set()
     for line in text.splitlines():
         if any(kw in line for kw in ["建议", "提醒", "风险", "健康", "习惯", "注意"]):
-            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑吸烟戒烟肺健康心脏高血压健康生活作息锻炼饮食焦虑熬夜肥胖糖尿病慢性病运动建议高血压血脂心理健康喝酒]+", line)
+            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑吸烟戒烟肺健康高血压]+", line)
             keywords.update(words)
     return list(keywords)[:3] or ["健康建议"]
 
@@ -64,7 +64,7 @@ def recommend_youtube_videos(query, max_results=3):
             videos.append((title, link))
     return videos
 
-# --- 多语言 UI ---
+# --- UI 多语言 ---
 language = st.selectbox("🌐 选择语言 / Language", ["中文", "English"])
 is_zh = language == "中文"
 
@@ -153,31 +153,26 @@ if st.button(T["btn"]):
     else:
         st.error("❌ 小宝没能生成建议，请检查网络或API")
 
-# --- 显示建议 + 控制朗读 + 视频推荐 ---
+# --- 显示建议 + 播放 + 视频推荐 ---
 if "health_result" in st.session_state:
     st.markdown("### ✅ 小宝生成的健康报告：")
     st.write(st.session_state["health_result"])
 
-    with st.expander("🗣️ 小宝朗读控制", expanded=True):
-        rate = st.slider("语速调节", 120, 240, 160, step=10)
-        colr1, colr2 = st.columns([1, 1])
-        colr1, colr2 = st.columns([1, 1])
-
-if colr1.button("🦜 点我朗读健康报告"):
-    if "health_result" in st.session_state:
-        stop_flag = False
-        speak_thread = threading.Thread(target=speak_text, args=(st.session_state["health_result"], rate))
-        speak_thread.start()
-
-if colr2.button("🛑 停止朗读"):
-    stop_flag = True
-    engine.stop()
-
+    if pyttsx3_available:
+        with st.expander("🗣️ 小宝朗读控制", expanded=True):
+            rate = st.slider("语速调节", 120, 240, 160, step=10)
+            colr1, colr2 = st.columns([1, 1])
+            if colr1.button("🦜 点我朗读健康报告"):
+                stop_flag = False
+                speak_thread = threading.Thread(target=speak_text, args=(st.session_state["health_result"], rate))
+                speak_thread.start()
+            if colr2.button("🛑 停止朗读"):
+                stop_flag = True
+                engine.stop()
 
     st.markdown("### 🎥 小宝为你推荐的视频：")
-    keywords = extract_health_keywords(st.session_state["health_result"])
-    search_query = " ".join(keywords)
-    videos = recommend_youtube_videos(search_query)
+    query = " ".join(extract_health_keywords(st.session_state["health_result"]))
+    videos = recommend_youtube_videos(query)
     if videos:
         for title, link in videos:
             st.markdown(f"- [{title}]({link})")
@@ -206,10 +201,11 @@ if st.button(T["send"]) and question.strip():
         st.success(T["answer"])
         st.write(reply)
 
-# --- 聊天记录展示 ---
+# --- 聊天记录 ---
 if st.session_state.chat_history:
     st.markdown("---")
     st.subheader(T["history"])
     for q, a in reversed(st.session_state.chat_history[-5:]):
         st.markdown(f"**🧍 你：** {q}")
         st.markdown(f"**🤖 小宝：** {a}")
+
