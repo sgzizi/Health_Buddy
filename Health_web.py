@@ -16,13 +16,12 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # --- 文本清理函数 ---
 def clean_text(text):
-    # 清除 Markdown / HTML 删除线样式
-    text = re.sub(r"[-=]{3,}", "", text)                 # 连续横线
-    text = re.sub(r"~{2,}(.*?)~{2,}", "", text)          # ~~删除线~~
-    text = re.sub(r"<s>.*?</s>", "", text)               # <s>HTML删除线</s>
-    text = re.sub(r"<del>.*?</del>", "", text)           # <del>样式</del>
-    text = re.sub(r"[（(][^）)]+[）)]", "", text)         # 中文/英文括号
-    text = text.replace("✅ 小宝回答：", "")             # 去除提示语
+    text = re.sub(r"[-=]{3,}", "", text)
+    text = re.sub(r"~{2,}(.*?)~{2,}", "", text)
+    text = re.sub(r"<s>.*?</s>", "", text)
+    text = re.sub(r"<del>.*?</del>", "", text)
+    text = re.sub(r"[（(][^）)]+[）)]", "", text)
+    text = text.replace("✅ 小宝回答：", "")
     return text.strip()
 
 # --- Mac 朗读 ---
@@ -32,21 +31,29 @@ def speak_mac(text, rate=160):
     except Exception as e:
         st.warning(f"播放失败：{e}")
 
-# --- YouTube 视频推荐 ---
+# --- 提取健康关键词（更精准）---
+def extract_health_keywords(text):
+    keywords = set()
+    for line in text.splitlines():
+        if any(kw in line for kw in ["建议", "提醒", "风险", "健康", "习惯", "注意"]):
+            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑]+", line)
+            keywords.update(words)
+    return list(keywords)[:3] or ["健康建议"]
+
+# --- YouTube 推荐 ---
 def recommend_youtube_videos(query, max_results=3):
     url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults={max_results}&q={query}&key={YOUTUBE_API_KEY}"
     res = requests.get(url)
     videos = []
     if res.status_code == 200:
-        data = res.json()
-        for item in data["items"]:
+        for item in res.json().get("items", []):
             video_id = item["id"]["videoId"]
             title = item["snippet"]["title"]
             link = f"https://www.youtube.com/watch?v={video_id}"
             videos.append((title, link))
     return videos
 
-# --- UI 多语言 ---
+# --- 多语言 UI ---
 language = st.selectbox("🌐 选择语言 / Language", ["中文", "English"])
 is_zh = language == "中文"
 
@@ -72,7 +79,7 @@ T = {
 
 st.title(T["title"])
 
-# --- 获取天气 ---
+# --- 天气 ---
 def get_weather(city):
     try:
         url = f"http://api.weatherapi.com/v1/current.json?key={WEATHER_API_KEY}&q={city}&lang={'zh' if is_zh else 'en'}"
@@ -106,7 +113,7 @@ oxygen = col5.text_input(T["oxygen"])
 steps = col6.text_input(T["steps"])
 temp = st.text_input(T["temp"])
 
-# --- 生成健康建议 ---
+# --- 健康建议生成 ---
 if st.button(T["btn"]):
     prompt = f"""
 📍 城市：{city}
@@ -118,24 +125,24 @@ if st.button(T["btn"]):
 🩺 慢性病/基础病：{disease}
 🧠 生活习惯：{habit}
 
-请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业（稍微多一点点），帮我生成：
+请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业，帮我生成：
 1️⃣ 健康状况简评
-2️⃣ 风险提示与疾病提醒或预警
-3️⃣ 饮食与生活建议（结合城市天气和健康数据）
-4️⃣ 鼓励关心的话（结合用户健康数据和城市天气）
+2️⃣ 风险提示或提醒
+3️⃣ 饮食与生活建议（结合城市天气）
+4️⃣ 鼓励关心的话（结合用户数据）
 """
-    res = requests.post(
+    r = requests.post(
         "https://api.deepseek.com/v1/chat/completions",
         headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
         json={"model": "deepseek-chat", "messages": [{"role": "user", "content": prompt}]}
     )
-    if res.status_code == 200:
-        result = clean_text(res.json()["choices"][0]["message"]["content"])
+    if r.status_code == 200:
+        result = clean_text(r.json()["choices"][0]["message"]["content"])
         st.session_state["health_result"] = result
     else:
         st.error("❌ 小宝没能生成建议，请检查网络或API")
 
-# --- 显示健康报告 + 朗读控制 ---
+# --- 显示建议 + 控制朗读 + 视频推荐 ---
 if "health_result" in st.session_state:
     st.markdown("### ✅ 小宝生成的健康报告：")
     st.write(st.session_state["health_result"])
@@ -148,9 +155,9 @@ if "health_result" in st.session_state:
         if colr2.button("🛑 停止朗读"):
             subprocess.run(["killall", "say"])
 
-    # --- 推荐健康视频 ---
     st.markdown("### 🎥 小宝为你推荐的视频：")
-    search_query = f"{city} 健康 {disease} {habit}"
+    keywords = extract_health_keywords(st.session_state["health_result"])
+    search_query = " ".join(keywords)
     videos = recommend_youtube_videos(search_query)
     if videos:
         for title, link in videos:
@@ -166,9 +173,8 @@ if "chat_history" not in st.session_state:
 
 question = st.text_input(T["question"])
 if st.button(T["send"]) and question.strip():
-    history = "\n".join([f"你：{q}\n小宝：{a}" for q, a in st.session_state.chat_history[-3:]]) if is_zh else \
-              "\n".join([f"You: {q}\nXiaoBao: {a}" for q, a in st.session_state.chat_history[-3:]])
-    full_prompt = f"{history}\n你：{question}\n小宝：" if is_zh else f"{history}\nYou: {question}\nXiaoBao:"
+    history = "\n".join([f"你：{q}\n小宝：{a}" for q, a in st.session_state.chat_history[-3:]])
+    full_prompt = f"{history}\n你：{question}\n小宝："
 
     r = requests.post(
         "https://api.deepseek.com/v1/chat/completions",
@@ -188,14 +194,3 @@ if st.session_state.chat_history:
     for q, a in reversed(st.session_state.chat_history[-5:]):
         st.markdown(f"**🧍 你：** {q}")
         st.markdown(f"**🤖 小宝：** {a}")
-
-
-
-
-
-
-
-
-
-
-
