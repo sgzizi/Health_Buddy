@@ -1,9 +1,13 @@
-# --- 页面配置 ---
 import streamlit as st
-import os, re, requests
-import threading
+import os
+import re
+import requests
+import subprocess
 from dotenv import load_dotenv
+import pyttsx3
+import threading
 
+# --- 页面配置 ---
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
 
 # --- 尝试加载 pyttsx3 ---
