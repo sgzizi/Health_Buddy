@@ -5,6 +5,9 @@ import re
 import requests
 import subprocess
 from dotenv import load_dotenv
+import pyttsx3
+import threading
+
 
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
 
@@ -24,19 +27,27 @@ def clean_text(text):
     text = text.replace("✅ 小宝回答：", "")
     return text.strip()
 
+def speak_text(text, rate):
+    global stop_flag
+    engine.setProperty("rate", rate)
+    for line in text.splitlines():
+        if stop_flag:
+            break
+        engine.say(line)
+    engine.runAndWait()
+
+
 # --- Mac 朗读 ---
-def speak_mac(text, rate=160):
-    try:
-        subprocess.Popen(["say", "-r", str(rate), text])
-    except Exception as e:
-        st.warning(f"播放失败：{e}")
+engine = pyttsx3.init()
+speak_thread = None
+stop_flag = False
 
 # --- 提取健康关键词（更精准）---
 def extract_health_keywords(text):
     keywords = set()
     for line in text.splitlines():
         if any(kw in line for kw in ["建议", "提醒", "风险", "健康", "习惯", "注意"]):
-            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑]+", line)
+            words = re.findall(r"[健康饮食作息锻炼睡眠压力心率血压肥胖抽烟熬夜糖尿病心脏疾病肥胖癌症焦虑吸烟戒烟肺健康心脏高血压健康生活作息锻炼饮食焦虑熬夜肥胖糖尿病慢性病运动建议高血压血脂心理健康喝酒]+", line)
             keywords.update(words)
     return list(keywords)[:3] or ["健康建议"]
 
@@ -150,10 +161,18 @@ if "health_result" in st.session_state:
     with st.expander("🗣️ 小宝朗读控制", expanded=True):
         rate = st.slider("语速调节", 120, 240, 160, step=10)
         colr1, colr2 = st.columns([1, 1])
-        if colr1.button("🦜 点我朗读健康报告"):
-            speak_mac(st.session_state["health_result"], rate)
-        if colr2.button("🛑 停止朗读"):
-            subprocess.run(["killall", "say"])
+        colr1, colr2 = st.columns([1, 1])
+
+if colr1.button("🦜 点我朗读健康报告"):
+    if "health_result" in st.session_state:
+        stop_flag = False
+        speak_thread = threading.Thread(target=speak_text, args=(st.session_state["health_result"], rate))
+        speak_thread.start()
+
+if colr2.button("🛑 停止朗读"):
+    stop_flag = True
+    engine.stop()
+
 
     st.markdown("### 🎥 小宝为你推荐的视频：")
     keywords = extract_health_keywords(st.session_state["health_result"])
