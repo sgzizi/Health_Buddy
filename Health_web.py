@@ -4,31 +4,12 @@ import re
 import requests
 import subprocess
 from dotenv import load_dotenv
-import pyttsx3
-import threading
 
 # --- 页面配置 ---
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
 
 # --- 尝试加载 pyttsx3 ---
-try:
-    import pyttsx3
-    engine = pyttsx3.init()
-    speak_thread = None
-    stop_flag = False
-
-    def speak_text(text, rate):
-        global stop_flag
-        engine.setProperty("rate", rate)
-        for line in text.splitlines():
-            if stop_flag:
-                break
-            engine.say(line)
-        engine.runAndWait()
-
-    pyttsx3_available = True
-except:
-    pyttsx3_available = False
+pyttsx3_available = False
 
 # --- 加载密钥 ---
 load_dotenv()
@@ -140,11 +121,11 @@ if st.button(T["btn"]):
 🩺 慢性病/基础病：{disease}
 🧠 生活习惯：{habit}
 
-请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业，帮我生成：
+请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业（回答的稍微多一点专业一点），帮我生成：
 1️⃣ 健康状况简评
-2️⃣ 风险提示或提醒
-3️⃣ 饮食与生活建议（结合城市天气）
-4️⃣ 鼓励关心的话（结合用户数据）
+2️⃣ 风险提示或疾病提醒
+3️⃣ 饮食与生活建议（结合城市天气和健康数据）
+4️⃣ 鼓励关心的话（结合用户健康数据和城市天气）
 """
     r = requests.post(
         "https://api.deepseek.com/v1/chat/completions",
@@ -162,17 +143,13 @@ if "health_result" in st.session_state:
     st.markdown("### ✅ 小宝生成的健康报告：")
     st.write(st.session_state["health_result"])
 
-    if pyttsx3_available:
-        with st.expander("🗣️ 小宝朗读控制", expanded=True):
-            rate = st.slider("语速调节", 120, 240, 160, step=10)
-            colr1, colr2 = st.columns([1, 1])
-            if colr1.button("🦜 点我朗读健康报告"):
-                stop_flag = False
-                speak_thread = threading.Thread(target=speak_text, args=(st.session_state["health_result"], rate))
-                speak_thread.start()
-            if colr2.button("🛑 停止朗读"):
-                stop_flag = True
-                engine.stop()
+    with st.expander("🗣️ 小宝朗读控制", expanded=True):
+        rate = st.slider("语速调节", 120, 240, 160, step=10)
+        colr1, colr2 = st.columns([1, 1])
+        if colr1.button("🦜 点我朗读健康报告"):
+            subprocess.Popen(["say", "-r", str(rate), st.session_state["health_result"]])
+        if colr2.button("🛑 停止朗读"):
+            subprocess.run(["killall", "say"])
 
     st.markdown("### 🎥 小宝为你推荐的视频：")
     query = " ".join(extract_health_keywords(st.session_state["health_result"]))
