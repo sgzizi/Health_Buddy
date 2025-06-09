@@ -19,22 +19,20 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # --- 文本清理 ---
 def clean_text(text):
-    # 清除多种常见的 Markdown 和 HTML 标签
-    text = re.sub(r"[-=]{3,}", "", text)  # 连续横线
-    text = re.sub(r"~{2,}(.*?)~{2,}", "", text)  # ~~删除线~~
-    text = re.sub(r"<s>.*?</s>", "", text)  # <s>HTML删除线</s>
-    text = re.sub(r"<del>.*?</del>", "", text)  # <del>HTML删除线</del>
-    text = re.sub(r"[（(][^）)]+[）)]", "", text)  # 中文/英文括号
-    text = re.sub(r"([*#_~`<>^])", "", text)  # 清除一些常见符号
-    text = re.sub(r"\s+", " ", text)  # 多余空格转为单个空格
-    text = text.replace("✅ 小宝回答：", "")  # 去除提示语
+    text = re.sub(r"[-=]{3,}", "", text)  # 多个 - 或 = 横线
+    text = re.sub(r"[~~]{2,}(.*?)~~", "", text)  # ~~中划线风格
+    text = re.sub(r"<s>.*?</s>", "", text)  # 清除<s>...</s>标记
+    text = re.sub(r"<del>.*?</del>", "", text)  # 清除<del>...</del>标签
+    text = re.sub(r"[（(][^）)]+[）)]", "", text)  # 删除括号中的内容
+    text = re.sub(r"[—–－_‾﹣]+", "", text)  # 删除所有类型的破折号、全角/半角横线、下划线等
+    text = text.replace("✅ 小宝回答：", "")
     return text.strip()
 
+
 # --- 健康关键词提取 ---
-# 替换原来的 extract_health_keywords 函数
 def extract_health_keywords(text):
     health_keywords = [
-        "吸烟", "戒烟", "肺健康", "心脏", "高血压", "健康生活", "作息", "锻炼", "饮食", "焦虑", "熬夜", "肥胖",
+        "吸烟", "戒烟", "肺健康", "心脏", "高血压", "秦皇岛" , "健康生活", "作息", "锻炼", "饮食", "焦虑", "熬夜", "肥胖",
         "糖尿病", "慢性病", "运动建议", "高血压", "血脂", "心理健康"
     ]
     found = set()
@@ -43,7 +41,6 @@ def extract_health_keywords(text):
             if word in line:
                 found.add(word)
     return list(found)[:3] or ["健康生活"]
-
 
 # --- YouTube 推荐 ---
 def recommend_youtube_videos(query, max_results=3):
@@ -74,7 +71,7 @@ T = {
     "oxygen": "🩸 你的小血氧是多少呢？比如96～98%" if is_zh else "🩸 Oxygen level (e.g. 96–98%)",
     "steps": "🚶 今天大概走了多少步呢？" if is_zh else "🚶 Steps today?",
     "temp": "🌡 小宝来测体温啦，现在大概多少度呀？" if is_zh else "🌡 Temperature now?",
-    "btn": "🧠 生成健康报告" if is_zh else "🧠 Generate Advice",
+    "btn": "🧠 生成健康建议" if is_zh else "🧠 Generate Advice",
     "ask_subtitle": "🙋 有什么想问问小宝的吗？" if is_zh else "🙋 Anything to ask XiaoBao?",
     "question": "🐣 和小宝聊聊吧！" if is_zh else "🐣 Chat with XiaoBao!",
     "send": "发送 / Send",
@@ -103,8 +100,18 @@ def get_weather(city):
         return T["weather_fail"], T["weather_none"]
 
 # --- 输入部分 ---
+# --- 输入部分 ---
 city = st.text_input(T["city"], value="秦皇岛" if is_zh else "Qinhuangdao")
-weather_str, weather_tip = get_weather(city)
+
+# ✅ 自动转换中文城市名为拼音（只改这里即可）
+city_map = {
+    "北京": "Beijing", "上海": "Shanghai", "广州": "Guangzhou", "深圳": "Shenzhen",
+    "南京": "Nanjing", "秦皇岛": "Qinhuangdao", "杭州": "Hangzhou", "重庆": "Chongqing",
+    "天津": "Tianjin", "武汉": "Wuhan", "成都": "Chengdu", "长沙": "Changsha",
+}
+query_city = city_map.get(city.strip(), city)
+
+weather_str, weather_tip = get_weather(query_city)
 st.info(f"📍 {city} 当前天气：{weather_str} | 💡 {weather_tip}")
 
 col1, col2 = st.columns(2)
@@ -130,10 +137,10 @@ if st.button(T["btn"]):
 🩺 慢性病/基础病：{disease}
 🧠 生活习惯：{habit}
 
-请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业（回答的稍微多一点专业一点），帮我生成：
+请你作为健康顾问“小宝”，语气要轻松温暖、俏皮有趣但专业（稍微多一点），帮我生成：
 1️⃣ 健康状况简评
 2️⃣ 风险提示或疾病提醒
-3️⃣ 饮食与生活建议（结合城市天气和健康数据）
+3️⃣ 饮食与生活建议（结合城市天气和用户健康数据）
 4️⃣ 鼓励关心的话（结合用户健康数据和城市天气）
 """
     r = requests.post(
