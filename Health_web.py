@@ -206,4 +206,3 @@ if st.session_state.chat_history:
         st.markdown(f"**🧍 你：** {q}")
         st.markdown(f"**🤖 小宝：** {a}")
 
-
