@@ -2,7 +2,6 @@
 
 一个基于 Streamlit 的智能健康助手，为你每日生成个性化健康建议，并配套语音朗读和 YouTube 健康视频推荐功能。  
 
-![screenshot](./screenshot.png)
 
 ---
 
