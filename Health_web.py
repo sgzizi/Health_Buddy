@@ -19,12 +19,15 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 # --- 文本清理 ---
 def clean_text(text):
-    text = re.sub(r"[-=]{3,}", "", text)
-    text = re.sub(r"~{2,}(.*?)~{2,}", "", text)
-    text = re.sub(r"<s>.*?</s>", "", text)
-    text = re.sub(r"<del>.*?</del>", "", text)
-    text = re.sub(r"[（(][^）)]+[）)]", "", text)
-    text = text.replace("✅ 小宝回答：", "")
+    # 清除多种常见的 Markdown 和 HTML 标签
+    text = re.sub(r"[-=]{3,}", "", text)  # 连续横线
+    text = re.sub(r"~{2,}(.*?)~{2,}", "", text)  # ~~删除线~~
+    text = re.sub(r"<s>.*?</s>", "", text)  # <s>HTML删除线</s>
+    text = re.sub(r"<del>.*?</del>", "", text)  # <del>HTML删除线</del>
+    text = re.sub(r"[（(][^）)]+[）)]", "", text)  # 中文/英文括号
+    text = re.sub(r"([*#_~`<>^])", "", text)  # 清除一些常见符号
+    text = re.sub(r"\s+", " ", text)  # 多余空格转为单个空格
+    text = text.replace("✅ 小宝回答：", "")  # 去除提示语
     return text.strip()
 
 # --- 健康关键词提取 ---
