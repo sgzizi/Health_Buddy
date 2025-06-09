@@ -89,5 +89,5 @@ health-buddy/
 
 ## 🧠 作者
 
-由 Jenson（sg子子） 和团队开发 ✨  
+由 Jenson（sg子子） 和团队（Ray & 啧肉）开发 ✨  
 欢迎贡献和提出建议！
