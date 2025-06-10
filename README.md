@@ -21,8 +21,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/health-buddy.git
-cd health-buddy
+git clone https://github.com/sgzizi/Health-Buddy.git
+cd Health-Buddy
 ```
 
 ### 2. 安装依赖
