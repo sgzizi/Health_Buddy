@@ -5,19 +5,15 @@ import requests
 import subprocess
 from dotenv import load_dotenv
 
-# --- 页面配置 ---
 st.set_page_config(page_title="每日健康小宝", page_icon="💖", layout="wide")
 
-# --- 尝试加载 pyttsx3 ---
 pyttsx3_available = False
 
-# --- 加载密钥 ---
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-# --- 文本清理 ---
 def clean_text(text):
     text = re.sub(r"[-=]{3,}", "", text)  # 多个 - 或 = 横线
     text = re.sub(r"[~~]{2,}(.*?)~~", "", text)  # ~~中划线风格
@@ -32,7 +28,7 @@ def clean_text(text):
 # --- 健康关键词提取 ---
 def extract_health_keywords(text):
     health_keywords = [
-        "吸烟", "戒烟", "肺健康", "心脏", "高血压", "秦皇岛" , "健康生活", "作息", "锻炼", "饮食", "焦虑", "熬夜", "肥胖",
+        "吸烟", "戒烟", "肺健康", "心脏", "高血压", "糖尿病" , "秦皇岛" , "健康生活", "作息", "锻炼", "饮食", "焦虑", "熬夜", "肥胖",
         "糖尿病", "慢性病", "运动建议", "高血压", "血脂", "心理健康"
     ]
     found = set()
@@ -66,9 +62,9 @@ T = {
     "weather_none": "👕 小宝暂时没拿到天气数据" if is_zh else "👕 XiaoBao didn't get weather data yet~",
     "disease": "请写写你现在有没有慢性病或基础病" if is_zh else "Any chronic diseases (optional)",
     "habit": "有没有什么生活习惯（如抽烟、熬夜、喝酒等）？告诉我吧~" if is_zh else "Any habits?",
-    "heart": "💓 心率大概是多少呢？比如80～100" if is_zh else "💓 Heart rate (e.g. 80~100)",
+    "heart": "💓 你的小心率大概是多少呢？" if is_zh else "💓 Heart rate (e.g. 80~100)",
     "exercise": "🏃 这次心率是运动完测的吗？" if is_zh else "🏃 Heart rate after exercise?",
-    "oxygen": "🩸 你的小血氧是多少呢？比如96～98%" if is_zh else "🩸 Oxygen level (e.g. 96–98%)",
+    "oxygen": "🩸 你的小血氧是多少呢？" if is_zh else "🩸 Oxygen level (e.g. 96–98%)",
     "steps": "🚶 今天大概走了多少步呢？" if is_zh else "🚶 Steps today?",
     "temp": "🌡 小宝来测体温啦，现在大概多少度呀？" if is_zh else "🌡 Temperature now?",
     "btn": "🧠 生成健康建议" if is_zh else "🧠 Generate Advice",
@@ -177,6 +173,7 @@ if "health_result" in st.session_state:
         st.info("🧐 没找到相关视频，可以换个关键词试试~")
 
 # --- 问答模块 ---
+# --- 问答模块 ---
 st.markdown("---")
 st.subheader(T["ask_subtitle"])
 if "chat_history" not in st.session_state:
@@ -184,6 +181,7 @@ if "chat_history" not in st.session_state:
 
 question = st.text_input(T["question"])
 if st.button(T["send"]) and question.strip():
+    # Format history to show previous interactions
     history = "\n".join([f"你：{q}\n小宝：{a}" for q, a in st.session_state.chat_history[-3:]])
     full_prompt = f"{history}\n你：{question}\n小宝："
 
@@ -193,16 +191,20 @@ if st.button(T["send"]) and question.strip():
         json={"model": "deepseek-chat", "messages": [{"role": "user", "content": full_prompt}]}
     )
     if r.status_code == 200:
+        # Process response
         reply = clean_text(r.json()["choices"][0]["message"]["content"])
-        st.session_state.chat_history.append((question, reply))
+        st.session_state.chat_history.append((question, reply))  # Save new question-answer pair
         st.success(T["answer"])
         st.write(reply)
 
-# --- 聊天记录 ---
+# --- 聊天记录展示 ---
 if st.session_state.chat_history:
     st.markdown("---")
     st.subheader(T["history"])
+
+    # Displaying chat history in reverse order (most recent at the top)
     for q, a in reversed(st.session_state.chat_history[-5:]):
         st.markdown(f"**🧍 你：** {q}")
         st.markdown(f"**🤖 小宝：** {a}")
+
 
